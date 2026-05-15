@@ -8,6 +8,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import config
+from middlewares.db_session import DbSessionMiddleware
+from database import new_session
 
 
 async def main():
@@ -23,6 +25,8 @@ async def main():
     )
 
     dp["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    dp.update.middleware(DbSessionMiddleware(session_pool=new_session))
 
     # dp.include_routers()
 

@@ -25,11 +25,3 @@ class Model(DeclarativeBase):
             "pk": "pk_%(table_name)s",
         }
     )
-
-
-async def get_db():
-    async with new_session() as session:
-        yield session
-
-
-SessionDep = Annotated[AsyncSession, get_db()]
