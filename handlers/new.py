@@ -23,7 +23,7 @@ router = Router()
 
 
 # ========================== FSM ==========================
-class CreateNotification(StatesGroup):
+class NewNotification(StatesGroup):
     waiting_title = State()
     waiting_repeat_type = State()
     waiting_date = State()
@@ -71,7 +71,7 @@ class YearMonthCallback(CallbackData, prefix="year_month"):
 # ========================== New Event Title ==========================
 @router.callback_query(F.data == "add_new_event")
 async def add_new_event(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(CreateNotification.waiting_title)
+    await state.set_state(NewNotification.waiting_title)
     msg = await callback.message.edit_text(
         '📝 Шаг 1 из 4 \n\n Введи название или описание напоминания. \n\n Например: "Выпить таблетки" или "Созвон с командой"',
         reply_markup=new.get_cancel_keyboard(),  # BackCallback(value="start")),
@@ -81,12 +81,12 @@ async def add_new_event(callback: CallbackQuery, state: FSMContext):
 
 
 # ========================== Selection of Repeater Type ==========================
-@router.message(CreateNotification.waiting_title)
+@router.message(NewNotification.waiting_title)
 async def process_event_name(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     bot_msg = data.get("bot_msg")
     await state.update_data(title=message.text)
-    await state.set_state(CreateNotification.waiting_repeat_type)
+    await state.set_state(NewNotification.waiting_repeat_type)
     msg = await message.answer(
         f'✅ Записал: "{message.text}" \n\n ⏱ Шаг 2 из 4 \n\n Как часто напоминать?',
         reply_markup=service.merge_keyboards(
@@ -109,7 +109,7 @@ async def process_event_name(message: Message, state: FSMContext, bot: Bot):
 
 # ========================== Exact Repeater Type ==========================
 @router.callback_query(
-    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "exact")
+    NewNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "exact")
 )
 async def process_exact_type(
     callback: CallbackQuery,
@@ -117,7 +117,7 @@ async def process_exact_type(
     state: FSMContext,
 ):
     await state.update_data(repeat_type=callback_data.type)
-    await state.set_state(CreateNotification.waiting_date)
+    await state.set_state(NewNotification.waiting_date)
     msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите дату",
         reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
@@ -153,7 +153,7 @@ async def process_calendar(
             return
 
         await state.update_data(date=chosen_date)
-        await state.set_state(CreateNotification.waiting_time)
+        await state.set_state(NewNotification.waiting_time)
         msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {chosen_date.strftime('%d.%m.%Y')} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
@@ -166,7 +166,7 @@ async def process_calendar(
 
 # ========================== Timer Repeater Type ==========================
 @router.callback_query(
-    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "timer")
+    NewNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "timer")
 )
 async def process_timer_type(
     callback: CallbackQuery,
@@ -174,7 +174,7 @@ async def process_timer_type(
     state: FSMContext,
 ):
     await state.update_data(repeat_type=callback_data.type)
-    await state.set_state(CreateNotification.waiting_timer)
+    await state.set_state(NewNotification.waiting_timer)
     msg = await callback.message.edit_text(
         "📅 Шаг 3 из 4 \n\n Через сколько времени напомнить?",
         reply_markup=service.merge_keyboards(
@@ -203,17 +203,17 @@ def to_seconds(s: str):
     return sec
 
 
-@router.callback_query(CreateNotification.waiting_timer, TimerCallback.filter())
+@router.callback_query(NewNotification.waiting_timer, TimerCallback.filter())
 async def process_timer(
     callback: CallbackQuery, callback_data: TimerCallback, state: FSMContext
 ):
     if callback_data.value != "own":
         await state.update_data(timer_seconds=to_seconds(callback_data.value))
         await state.update_data(timer_str=callback_data.value)
-        await state.set_state(CreateNotification.waiting_confirm)
+        await state.set_state(NewNotification.waiting_confirm)
         await confirmation_step(callback=callback, state=state)
     else:
-        await state.set_state(CreateNotification.waiting_own_timer)
+        await state.set_state(NewNotification.waiting_own_timer)
         msg = await callback.message.edit_text(
             text=("""Введи время в формате:
 "X год, Y месяц, Z неделя, N день, M час, K мин, V сек"
@@ -231,7 +231,7 @@ def validate_time_format(text: str) -> bool:
     return bool(pattern.match(text))
 
 
-@router.message(CreateNotification.waiting_own_timer)
+@router.message(NewNotification.waiting_own_timer)
 async def process_own_timer(message: Message, state: FSMContext, bot: Bot):
     if validate_time_format(message.text):
         sec = to_seconds(message.text)
@@ -240,7 +240,7 @@ async def process_own_timer(message: Message, state: FSMContext, bot: Bot):
             await state.update_data(timer_str=message.text)
             data = await state.get_data()
             bot_msg = data.get("bot_msg")
-            await state.set_state(CreateNotification.waiting_confirm)
+            await state.set_state(NewNotification.waiting_confirm)
             await confirmation_step(callback=None, state=state, message=message)
 
             if bot_msg:
@@ -258,7 +258,7 @@ async def process_own_timer(message: Message, state: FSMContext, bot: Bot):
 
 # ========================== Week Repeater Type ==========================
 @router.callback_query(
-    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "week")
+    NewNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "week")
 )
 async def process_week_type(
     callback: CallbackQuery,
@@ -266,7 +266,7 @@ async def process_week_type(
     state: FSMContext,
 ):
     await state.update_data(repeat_type=callback_data.type)
-    await state.set_state(CreateNotification.waiting_weekdays)
+    await state.set_state(NewNotification.waiting_weekdays)
     week_days = {
         1: False,
         2: False,
@@ -310,7 +310,7 @@ def get_string_weekdays(text: str):
     return "".join(text)
 
 
-@router.callback_query(CreateNotification.waiting_weekdays, WeekdaysCallback.filter())
+@router.callback_query(NewNotification.waiting_weekdays, WeekdaysCallback.filter())
 async def process_weekdays(
     callback: CallbackQuery, callback_data: WeekdaysCallback, state: FSMContext
 ):
@@ -345,7 +345,7 @@ async def process_weekdays(
             await callback.answer("Нужно выбрать хотя бы один день недели")
             return
         await state.update_data(weekdays=text)
-        await state.set_state(CreateNotification.waiting_time)
+        await state.set_state(NewNotification.waiting_time)
         msg = await callback.message.edit_text(
             f"📅 Вы выбрали эти дни недели: {get_string_weekdays(text)} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
@@ -358,7 +358,7 @@ async def process_weekdays(
 
 # ========================== Month Repeater Type ==========================
 @router.callback_query(
-    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "month")
+    NewNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "month")
 )
 async def process_week_type(
     callback: CallbackQuery,
@@ -366,7 +366,7 @@ async def process_week_type(
     state: FSMContext,
 ):
     await state.update_data(repeat_type=callback_data.type)
-    await state.set_state(CreateNotification.waiting_month_day)
+    await state.set_state(NewNotification.waiting_month_day)
     msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите в какой день месяца напоминать?",
         reply_markup=service.merge_keyboards(
@@ -377,12 +377,12 @@ async def process_week_type(
     await state.update_data(bot_msg=msg.message_id)
 
 
-@router.callback_query(CreateNotification.waiting_month_day, MonthDayCallback.filter())
+@router.callback_query(NewNotification.waiting_month_day, MonthDayCallback.filter())
 async def process_month_day(
     callback: CallbackQuery, callback_data: MonthDayCallback, state: FSMContext
 ):
     await state.update_data(month_day=callback_data.value)
-    await state.set_state(CreateNotification.waiting_time)
+    await state.set_state(NewNotification.waiting_time)
     s = callback_data.value
     if not s.isdigit():
         s = "Последний день месяца"
@@ -398,7 +398,7 @@ async def process_month_day(
 
 # ========================== Year Repeater Type ==========================
 @router.callback_query(
-    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "year")
+    NewNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "year")
 )
 async def process_week_type(
     callback: CallbackQuery,
@@ -406,7 +406,7 @@ async def process_week_type(
     state: FSMContext,
 ):
     await state.update_data(repeat_type=callback_data.type)
-    await state.set_state(CreateNotification.waiting_year_month)
+    await state.set_state(NewNotification.waiting_year_month)
     msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите в какой день и месяц напоминать?",
         reply_markup=service.merge_keyboards(
@@ -449,9 +449,7 @@ months_days = {
 }
 
 
-@router.callback_query(
-    CreateNotification.waiting_year_month, YearMonthCallback.filter()
-)
+@router.callback_query(NewNotification.waiting_year_month, YearMonthCallback.filter())
 async def process_year_month(
     callback: CallbackQuery, callback_data: YearMonthCallback, state: FSMContext
 ):
@@ -471,7 +469,7 @@ async def process_year_month(
     else:
         s = f"{str(callback_data.value).zfill(2)}.{str(callback_data.now).zfill(2)}"
         await state.update_data(year_month=s)
-        await state.set_state(CreateNotification.waiting_time)
+        await state.set_state(NewNotification.waiting_time)
         msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {s} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
@@ -483,7 +481,7 @@ async def process_year_month(
 
 
 # ========================== Time ==========================
-@router.callback_query(CreateNotification.waiting_time, TimeCallback.filter())
+@router.callback_query(NewNotification.waiting_time, TimeCallback.filter())
 async def process_time(
     callback: CallbackQuery, callback_data: TimeCallback, state: FSMContext
 ):
@@ -491,7 +489,7 @@ async def process_time(
         await update_time(callback, callback_data, state)
     else:
         await state.update_data(time=f"{callback_data.hour}:{callback_data.minute}")
-        await state.set_state(CreateNotification.waiting_confirm)
+        await state.set_state(NewNotification.waiting_confirm)
         await confirmation_step(callback=callback, state=state)
 
 
@@ -581,7 +579,7 @@ async def confirmation_step(
 
 
 # ========================== Confirm and Add to DB ==========================
-@router.callback_query(CreateNotification.waiting_confirm, F.data == "confirm")
+@router.callback_query(NewNotification.waiting_confirm, F.data == "confirm")
 async def process_confirm(
     callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
@@ -631,7 +629,7 @@ async def back_to(
 
 
 # ========================== Message Delete Logic ==========================
-@router.message(StateFilter(CreateNotification))
+@router.message(StateFilter(NewNotification))
 async def delete_messages(message: Message):
     try:
         await message.delete()
