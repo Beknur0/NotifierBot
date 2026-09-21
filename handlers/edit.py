@@ -84,3 +84,77 @@ async def edit_repeat_type_process(callback: CallbackQuery, state: FSMContext):
         ),
     )
     await state.update_data(bot_msg=msg.message_id)
+
+
+# ========================== Time Type Editing ==========================
+@router.callback_query(EditNotification.waiting_edit_field, F.data == "editTime")
+async def edit_time_process(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if data["repeat_type"] == "exact":
+        await state.set_state(new_hand.NewNotification.waiting_date)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущая дата: {data["date"].strftime('%d.%m.%Y')} \n\n Выберите дату",
+            reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+        )
+    elif data["repeat_type"] == "timer":
+        await state.set_state(new_hand.NewNotification.waiting_timer)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущее время напоминания: {data["timer_str"]} \n\n Через сколько времени напомнить?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_timer_keyboard(new_hand.TimerCallback),
+                edit.get_back_keyboard(),
+            ),
+        )
+    elif data["repeat_type"] == "week":
+        await state.set_state(new_hand.NewNotification.waiting_weekdays)
+        msg = await callback.message.edit_text(
+            f'✏️ Текущие дни недели: {new_hand.get_string_weekdays(data["weekdays"])} \n\n Выберите дни недели',
+            reply_markup=new_kb.get_weekdays_keyboard(
+                new_hand.WeekdaysCallback, data["week_days"], True
+            ),
+        )
+    elif data["repeat_type"] == "month":
+        await state.set_state(new_hand.NewNotification.waiting_month_day)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущий день месяца: {data["month_day"] if data["month_day"].isdigit() else "последний день месяца"} \n\n Выберите в какой день месяца напоминать?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_month_day_keyboard(new_hand.MonthDayCallback),
+                edit.get_back_keyboard(),
+            ),
+        )
+    elif data["repeat_type"] == "year":
+        await state.set_state(new_hand.NewNotification.waiting_year_month)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущая дата: {data["year_month"]} \n\n Выберите в какой день и месяц напоминать?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_year_month_keyboard(
+                    new_hand.YearMonthCallback,
+                    1,
+                    new_hand.months_names[1],
+                    new_hand.months_days[1],
+                ),
+                edit.get_back_keyboard(),
+            ),
+        )
+    await state.update_data(bot_msg=msg.message_id)
+
+
+# ========================== Back Logic ==========================
+@router.callback_query(EditNotification.waiting_edit_field, F.data == "editBack")
+async def edit_back_to_confirmation_process(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(new_hand.NewNotification.waiting_confirm)
+    await new_hand.confirmation_step(callback, state)
+
+
+@router.callback_query(StateFilter("*"), F.data == "editBack")
+async def edit_back_to_fields_process(callback: CallbackQuery, state: FSMContext):
+    await edit_processing(callback, state)
+
+
+# ========================== Message Delete Logic ==========================
+@router.message(StateFilter(EditNotification))
+async def delete_messages(message: Message):
+    try:
+        await message.delete()
+    except Exception:
+        pass

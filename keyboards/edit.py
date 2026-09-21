@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 def get_back_keyboard():
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]
+        inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="editBack")]]
     )
 
 

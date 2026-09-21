@@ -198,7 +198,9 @@ def get_timer_keyboard(callback_fabric: TimerCallback):
     )
 
 
-def get_weekdays_keyboard(callback_fabric: WeekdaysCallback, days: dict[int, bool]):
+def get_weekdays_keyboard(
+    callback_fabric: WeekdaysCallback, days: dict[int, bool], is_editing: bool = False
+):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -248,7 +250,11 @@ def get_weekdays_keyboard(callback_fabric: WeekdaysCallback, days: dict[int, boo
                     text="✅ Готово",
                     callback_data=callback_fabric(action="finish").pack(),
                 ),
-                InlineKeyboardButton(text="❌ Отмена", callback_data="cancel"),
+                (
+                    InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")
+                    if not is_editing
+                    else InlineKeyboardButton(text="◀️ Назад", callback_data="back")
+                ),
             ],
         ]
     )
