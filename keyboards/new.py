@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         TimerCallback,
         WeekdaysCallback,
         MonthDayCallback,
+        YearMonthCallback,
     )
 
 
@@ -275,6 +276,51 @@ def get_month_day_keyboard(callback_fabric: MonthDayCallback):
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=btns)
+
+
+def get_year_month_keyboard(
+    callback_fabric: YearMonthCallback, id: int, month: str, days: int
+):
+    month_btns = [
+        [
+            InlineKeyboardButton(
+                text="<",
+                callback_data=callback_fabric(action="change", value=-1, now=id).pack(),
+            ),
+            InlineKeyboardButton(text=f"{month}", callback_data=" "),
+            InlineKeyboardButton(
+                text=">",
+                callback_data=callback_fabric(action="change", value=1, now=id).pack(),
+            ),
+        ]
+    ]
+    if days % 7 == 0:
+        row = 4
+        full = days
+    else:
+        row = 5
+        full = days + 7 - days % 7
+    days_btns = (
+        np.array(
+            [
+                (
+                    InlineKeyboardButton(
+                        text=f"{i}",
+                        callback_data=callback_fabric(
+                            action="select", value=i, now=id
+                        ).pack(),
+                    )
+                    if i <= days
+                    else InlineKeyboardButton(text=" ", callback_data=" ")
+                )
+                for i in range(1, full + 1)
+            ]
+        )
+        .reshape(row, 7)
+        .tolist()
+    )
+    month_btns.extend(days_btns)
+    return InlineKeyboardMarkup(inline_keyboard=month_btns)
 
 
 def get_confirm_keyboard():
