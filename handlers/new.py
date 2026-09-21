@@ -73,7 +73,7 @@ class YearMonthCallback(CallbackData, prefix="year_month"):
 async def add_new_event(callback: CallbackQuery, state: FSMContext):
     await state.set_state(NewNotification.waiting_title)
     msg = await callback.message.edit_text(
-        '📝 Шаг 1 из 4 \n\n Введи название или описание напоминания. \n\n Например: "Выпить таблетки" или "Созвон с командой"',
+        '📝 Шаг 1 из 4 \n\n Введите название или описание напоминания. \n\n Например: "Выпить таблетки" или "Созвон с командой"',
         reply_markup=new.get_cancel_keyboard(),  # BackCallback(value="start")),
     )
     await state.update_data(bot_msg=msg.message_id)
@@ -528,10 +528,7 @@ async def update_time(
 
 
 # ========================== Confirmation Step ==========================
-async def confirmation_step(
-    callback: CallbackQuery | None, state: FSMContext, message: Message | None = None
-):
-    data = await state.get_data()
+def get_typ_vremiya(data: dict):
     if data["repeat_type"] == "exact":
         typ = "Конкретная дата"
         vremiya = f"{data["time"]} {data["date"].strftime('%d.%m.%Y')}"
@@ -551,7 +548,14 @@ async def confirmation_step(
     elif data["repeat_type"] == "year":
         typ = "Каждый год"
         vremiya = f"{data["time"]} {data["year_month"]}"
+    return typ, vremiya
 
+
+async def confirmation_step(
+    callback: CallbackQuery | None, state: FSMContext, message: Message | None = None
+):
+    data = await state.get_data()
+    typ, vremiya = get_typ_vremiya(data)
     text = f"""📋 Шаг 4 из 4 - Проверьте данные:
     
 {"📌 Название:":<18} {data["title"]}
