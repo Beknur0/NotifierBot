@@ -31,10 +31,11 @@ class CreateNotification(StatesGroup):
     waiting_timer = State()
     waiting_own_timer = State()
     waiting_weekdays = State()
+    waiting_month_day = State()
     waiting_confirm = State()
 
 
-# ========================== Callback Factory ==========================
+# ========================== Callback Fabric ==========================
 class RepeatTypeCallback(CallbackData, prefix="repeat_type"):
     type: str
 
@@ -54,6 +55,10 @@ class TimerCallback(CallbackData, prefix="timer"):
 class WeekdaysCallback(CallbackData, prefix="weekdays"):
     day: int | None = None
     action: str
+
+
+class MonthDayCallback(CallbackData, prefix="month_day"):
+    value: str
 
 
 # ========================== New Event Title ==========================
@@ -264,7 +269,7 @@ async def process_week_type(
     }
     await state.update_data(week_days=week_days)
     await callback.message.edit_text(
-        '📅 Шаг 3.1 из 4 \n\n Выбери дни недели (можно несколько). \n Нажимай на дни, потом нажми "Готово".',
+        '📅 Шаг 3.1 из 4 \n\n Выберите дни недели (можно несколько). \n Нажимай на дни, потом нажми "Готово".',
         reply_markup=new.get_weekdays_keyboard(WeekdaysCallback, week_days),
     )
     await callback.answer()
@@ -341,6 +346,44 @@ async def process_weekdays(
         )
 
 
+# ========================== Month Repeater Type ==========================
+@router.callback_query(
+    CreateNotification.waiting_repeat_type, RepeatTypeCallback.filter(F.type == "month")
+)
+async def process_week_type(
+    callback: CallbackQuery,
+    callback_data: RepeatTypeCallback,
+    state: FSMContext,
+):
+    await state.update_data(repeat_type=callback_data.type)
+    await state.set_state(CreateNotification.waiting_month_day)
+    await callback.message.edit_text(
+        "📅 Шаг 3.1 из 4 \n\n Выберите в какой день месяца напоминать?",
+        reply_markup=service.merge_keyboards(
+            new.get_month_day_keyboard(MonthDayCallback), new.get_cancel_keyboard()
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(CreateNotification.waiting_month_day, MonthDayCallback.filter())
+async def process_month_day(
+    callback: CallbackQuery, callback_data: MonthDayCallback, state: FSMContext
+):
+    await state.update_data(month_day=callback_data.value)
+    await state.set_state(CreateNotification.waiting_time)
+    s = callback_data.value
+    if not s.isdigit():
+        s = "Последний день месяца"
+    await callback.message.edit_text(
+        f"📅 Вы выбрали это число месяца: {s} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
+        reply_markup=service.merge_keyboards(
+            new.get_select_time_keyboard(TimeCallback, hour="00", minute="00"),
+            new.get_cancel_keyboard(),
+        ),
+    )
+
+
 # ========================== Time ==========================
 @router.callback_query(CreateNotification.waiting_time, TimeCallback.filter())
 async def process_time(
@@ -370,7 +413,11 @@ async def update_time(
     if data["repeat_type"] == "exact":
         vremiya = f"📅 Вы выбрали дату: {data["date"].strftime('%d.%m.%Y')}"
     elif data["repeat_type"] == "week":
-        vremiya = f"📅 Вы выбрали эти дни недели: {get_string_weekdays(data["weekdays"])}"
+        vremiya = (
+            f"📅 Вы выбрали эти дни недели: {get_string_weekdays(data["weekdays"])}"
+        )
+    elif data["repeat_type"] == "month":
+        vremiya = f"📅 Вы выбрали это число месяца: {data["month_day"] if data["month_day"].isdigit() else "Последний день месяца"}"
 
     await callback.message.edit_text(
         f"{vremiya} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
@@ -397,7 +444,11 @@ async def confirmation_step(
         vremiya = f"{data["time"]} {get_string_weekdays(data["weekdays"])}"
     elif data["repeat_type"] == "month":
         typ = "Каждый месяц"
-        vremiya = f""
+        vremiya = f"{data["time"]} " + (
+            f"каждое {data["month_day"]} число"
+            if data["month_day"].isdigit()
+            else f"последний день месяца"
+        )
     elif data["repeat_type"] == "year":
         typ = "Каждый год"
         vremiya = f""
@@ -470,7 +521,7 @@ async def back_to(
     if current:
         await state.clear()
         await callback.message.edit_text(
-            f"👋 Привет, {callback.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выбери действие:",
+            f"👋 Привет, {callback.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выберите действие:",
             reply_markup=start.get_start_keyboard(),
         )
     await callback.answer()

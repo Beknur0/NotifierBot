@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+import numpy as np
 
 from aiogram.types import (
     InlineKeyboardButton,
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
         TimeCallback,
         TimerCallback,
         WeekdaysCallback,
+        MonthDayCallback,
     )
 
 
@@ -249,6 +251,30 @@ def get_weekdays_keyboard(callback_fabric: WeekdaysCallback, days: dict[int, boo
             ],
         ]
     )
+
+
+def get_month_day_keyboard(callback_fabric: MonthDayCallback):
+    btns = (
+        np.array(
+            [
+                InlineKeyboardButton(
+                    text=f"{i}", callback_data=callback_fabric(value=f"{i}").pack()
+                )
+                for i in range(1, 29)
+            ]
+        )
+        .reshape(4, 7)
+        .tolist()
+    )
+    btns.append(
+        [
+            InlineKeyboardButton(
+                text="Последний день месяца",
+                callback_data=callback_fabric(value="last").pack(),
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=btns)
 
 
 def get_confirm_keyboard():
