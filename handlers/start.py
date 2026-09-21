@@ -17,7 +17,7 @@ async def start_function(message: Message, state: FSMContext):
         pass
     await state.clear()
     await message.answer(
-        f"👋 Привет, {message.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выбери действие:",
+        f"👋 Привет, {message.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выберите действие:",
         reply_markup=start.get_start_keyboard(),
     )
     
