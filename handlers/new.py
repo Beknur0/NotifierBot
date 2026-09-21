@@ -87,7 +87,7 @@ async def process_event_name(message: Message, state: FSMContext, bot: Bot):
     bot_msg = data.get("bot_msg")
     await state.update_data(title=message.text)
     await state.set_state(CreateNotification.waiting_repeat_type)
-    await message.answer(
+    msg = await message.answer(
         f'✅ Записал: "{message.text}" \n\n ⏱ Шаг 2 из 4 \n\n Как часто напоминать?',
         reply_markup=service.merge_keyboards(
             new.get_repeat_type_keyboard(RepeatTypeCallback),
@@ -104,6 +104,7 @@ async def process_event_name(message: Message, state: FSMContext, bot: Bot):
             await bot.delete_message(chat_id=message.chat.id, message_id=bot_msg)
         except Exception:
             pass
+    await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Exact Repeater Type ==========================
@@ -117,11 +118,11 @@ async def process_exact_type(
 ):
     await state.update_data(repeat_type=callback_data.type)
     await state.set_state(CreateNotification.waiting_date)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите дату",
         reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
     )
-    await callback.answer()
+    await state.update_data(bot_msg=msg.message_id)
 
 
 @router.callback_query(SimpleCalendarCallback.filter())
@@ -144,21 +145,23 @@ async def process_calendar(
             await callback.answer(
                 "❌ Нельзя выбрать прошедшую дату! Выберите другой день."
             )
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 "📅 Шаг 3.1 из 4 \n\n Выберите дату",
                 reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
             )
+            await state.update_data(bot_msg=msg.message_id)
             return
 
         await state.update_data(date=chosen_date)
         await state.set_state(CreateNotification.waiting_time)
-        await callback.message.edit_text(
+        msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {chosen_date.strftime('%d.%m.%Y')} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
                 new.get_select_time_keyboard(TimeCallback, hour="00", minute="00"),
                 new.get_cancel_keyboard(),
             ),
         )
+        await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Timer Repeater Type ==========================
@@ -172,13 +175,13 @@ async def process_timer_type(
 ):
     await state.update_data(repeat_type=callback_data.type)
     await state.set_state(CreateNotification.waiting_timer)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         "📅 Шаг 3 из 4 \n\n Через сколько времени напомнить?",
         reply_markup=service.merge_keyboards(
             new.get_timer_keyboard(TimerCallback), new.get_cancel_keyboard()
         ),
     )
-    await callback.answer()
+    await state.update_data(bot_msg=msg.message_id)
 
 
 def to_seconds(s: str):
@@ -218,7 +221,6 @@ async def process_timer(
             reply_markup=new.get_cancel_keyboard(),
         )
         await state.update_data(bot_msg=msg.message_id)
-        await callback.answer()
 
 
 def validate_time_format(text: str) -> bool:
@@ -236,11 +238,11 @@ async def process_own_timer(message: Message, state: FSMContext, bot: Bot):
         if sec != 0:
             await state.update_data(timer_seconds=sec)
             await state.update_data(timer_str=message.text)
+            data = await state.get_data()
+            bot_msg = data.get("bot_msg")
             await state.set_state(CreateNotification.waiting_confirm)
             await confirmation_step(callback=None, state=state, message=message)
 
-            data = await state.get_data()
-            bot_msg = data.get("bot_msg")
             if bot_msg:
                 try:
                     await bot.delete_message(
@@ -275,11 +277,11 @@ async def process_week_type(
         7: False,
     }
     await state.update_data(week_days=week_days)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         '📅 Шаг 3.1 из 4 \n\n Выберите дни недели (можно несколько). \n Нажимай на дни, потом нажми "Готово".',
         reply_markup=new.get_weekdays_keyboard(WeekdaysCallback, week_days),
     )
-    await callback.answer()
+    await state.update_data(bot_msg=msg.message_id)
 
 
 async def update_weekdays_keyboard(
@@ -344,13 +346,14 @@ async def process_weekdays(
             return
         await state.update_data(weekdays=text)
         await state.set_state(CreateNotification.waiting_time)
-        await callback.message.edit_text(
+        msg = await callback.message.edit_text(
             f"📅 Вы выбрали эти дни недели: {get_string_weekdays(text)} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
                 new.get_select_time_keyboard(TimeCallback, hour="00", minute="00"),
                 new.get_cancel_keyboard(),
             ),
         )
+        await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Month Repeater Type ==========================
@@ -364,13 +367,14 @@ async def process_week_type(
 ):
     await state.update_data(repeat_type=callback_data.type)
     await state.set_state(CreateNotification.waiting_month_day)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите в какой день месяца напоминать?",
         reply_markup=service.merge_keyboards(
             new.get_month_day_keyboard(MonthDayCallback), new.get_cancel_keyboard()
         ),
     )
     await callback.answer()
+    await state.update_data(bot_msg=msg.message_id)
 
 
 @router.callback_query(CreateNotification.waiting_month_day, MonthDayCallback.filter())
@@ -382,13 +386,14 @@ async def process_month_day(
     s = callback_data.value
     if not s.isdigit():
         s = "Последний день месяца"
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"📅 Вы выбрали это число месяца: {s} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
         reply_markup=service.merge_keyboards(
             new.get_select_time_keyboard(TimeCallback, hour="00", minute="00"),
             new.get_cancel_keyboard(),
         ),
     )
+    await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Year Repeater Type ==========================
@@ -402,7 +407,7 @@ async def process_week_type(
 ):
     await state.update_data(repeat_type=callback_data.type)
     await state.set_state(CreateNotification.waiting_year_month)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите в какой день и месяц напоминать?",
         reply_markup=service.merge_keyboards(
             new.get_year_month_keyboard(
@@ -411,7 +416,7 @@ async def process_week_type(
             new.get_cancel_keyboard(),
         ),
     )
-    await callback.answer()
+    await state.update_data(bot_msg=msg.message_id)
 
 
 months_names = {
@@ -467,13 +472,14 @@ async def process_year_month(
         s = f"{str(callback_data.value).zfill(2)}.{str(callback_data.now).zfill(2)}"
         await state.update_data(year_month=s)
         await state.set_state(CreateNotification.waiting_time)
-        await callback.message.edit_text(
+        msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {s} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
             reply_markup=service.merge_keyboards(
                 new.get_select_time_keyboard(TimeCallback, hour="00", minute="00"),
                 new.get_cancel_keyboard(),
             ),
         )
+        await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Time ==========================
@@ -513,13 +519,14 @@ async def update_time(
     elif data["repeat_type"] == "year":
         vremiya = f"📅 Вы выбрали дату: {data["year_month"]}"
 
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"{vremiya} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
         reply_markup=service.merge_keyboards(
             new.get_select_time_keyboard(TimeCallback, hour=hour, minute=minute),
             new.get_cancel_keyboard(),
         ),
     )
+    await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Confirmation Step ==========================
@@ -557,19 +564,20 @@ async def confirmation_step(
 Всё верно?"""
 
     if callback:
-        await callback.message.edit_text(
+        msg = await callback.message.edit_text(
             text=text,
             reply_markup=service.merge_keyboards(
                 new.get_confirm_keyboard(), new.get_cancel_keyboard(), horizontal=True
             ),
         )
     else:
-        await message.answer(
+        msg = await message.answer(
             text=text,
             reply_markup=service.merge_keyboards(
                 new.get_confirm_keyboard(), new.get_cancel_keyboard(), horizontal=True
             ),
         )
+    await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Confirm and Add to DB ==========================
@@ -600,6 +608,7 @@ async def process_confirm(
         "year_month": data.get("year_month") if data.get("year_month") else None,
     }
     await NotificationsRepository.add_notification(data_dict, session)
+    await state.clear()
     await callback.message.edit_text("🎉 Напоминание создано!")
     await callback.answer()
 
@@ -619,3 +628,12 @@ async def back_to(
             reply_markup=start.get_start_keyboard(),
         )
     await callback.answer()
+
+
+# ========================== Message Delete Logic ==========================
+@router.message(StateFilter(CreateNotification))
+async def delete_messages(message: Message):
+    try:
+        await message.delete()
+    except Exception:
+        pass

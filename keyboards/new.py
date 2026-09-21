@@ -328,7 +328,7 @@ def get_confirm_keyboard():
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="✅ Сохранить", callback_data="confirm"),
-                InlineKeyboardButton(text="✏️ Изменить", callback_data="change"),
+                InlineKeyboardButton(text="✏️ Изменить", callback_data="edit"),
             ]
         ]
     )

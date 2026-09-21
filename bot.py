@@ -12,7 +12,9 @@ from middlewares.db_session import DbSessionMiddleware
 from database import new_session
 from handlers import (
     start,
+    cancel,
     new,
+    edit,
 )
 
 
@@ -34,7 +36,9 @@ async def main():
 
     dp.include_routers(
         start.router,
+        cancel.router,
         new.router,
+        edit.router,
     )
 
     await bot.delete_webhook(drop_pending_updates=True)
