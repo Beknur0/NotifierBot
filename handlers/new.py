@@ -618,28 +618,49 @@ async def process_confirm(
             data_dict["date"].strftime("%d.%m.%Y"),
             data_dict["time"],
         )
+        text = f"Напомню тебе {data_dict["date"].strftime('%d.%m.%Y')} в {data_dict["time"]}"
     elif data_dict["repeat_type"] == "timer":
         job_id = await scheduler.add_timer_job(
             callback.from_user.id, data_dict["timer_seconds"]
         )
+        text = f"Напомню тебе через {data_dict["timer_str"]}"
     elif data_dict["repeat_type"] == "week":
         job_id = await scheduler.add_week_job(
             callback.from_user.id, data_dict["weekdays"], data_dict["time"]
         )
+        text = f"Буду напоминать тебе в эти дни недели {get_string_weekdays(data_dict["weekdays"])} в {data_dict["time"]}"
     elif data_dict["repeat_type"] == "month":
         job_id = await scheduler.add_month_job(
             callback.from_user.id, data_dict["month_day"], data_dict["time"]
+        )
+        text = (
+            "Буду напоминать тебе "
+            + (
+                f"каждое {data_dict["month_day"]} число месяца"
+                if data_dict["month_day"].isdigit()
+                else f"каждый последний день месяца"
+            )
+            + f" в {data_dict["time"]}"
         )
     elif data_dict["repeat_type"] == "year":
         job_id = await scheduler.add_year_job(
             callback.from_user.id, data_dict["year_month"], data_dict["time"]
         )
+        text = f"Буду напоминать тебе каждый год {data_dict["year_month"]} в {data_dict["time"]}"
     data_dict["job_id"] = job_id
 
     await NotificationsRepository.add_notification(data_dict, session)
     await state.clear()
-    await callback.message.edit_text("🎉 Напоминание создано!")
+    await callback.message.edit_text(
+        f"🎉 Напоминание создано! \n {text}", reply_markup=new.get_end_keyboard()
+    )
     await callback.answer()
+
+
+# ========================== Another One Logic ==========================
+@router.callback_query(StateFilter(None), F.data == "another_one")
+async def procces_another_one(callback: CallbackQuery, state: FSMContext):
+    await add_new_event(callback, state)
 
 
 # ========================== Cancel Logic ==========================

@@ -338,3 +338,16 @@ def get_confirm_keyboard():
             ]
         ]
     )
+
+
+def get_end_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📋 Мои напоминания", callback_data="my_notifications"
+                ),
+                InlineKeyboardButton(text="➕ Ещё одно", callback_data="another_one"),
+            ]
+        ]
+    )
