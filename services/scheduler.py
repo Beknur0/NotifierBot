@@ -1,0 +1,150 @@
+from datetime import datetime, timedelta
+import string
+import secrets
+
+from aiogram import Bot
+
+from database import new_session
+from scheduler import scheduler
+from repositories.notifications import NotificationsRepository
+
+_bot: Bot = None
+
+
+def init_bot(bot_instance):
+    global _bot
+    _bot = bot_instance
+
+
+async def test_method(user_id: int, job_id: str, type: str):
+    await _bot.send_message(
+        user_id, text=f"Тестовый запуск типа {type} с job_id: {job_id} успешен"
+    )
+    if type in ["exact", "timer"]:
+        async with new_session() as session:
+            await NotificationsRepository.delete_executed_job(job_id, session)
+
+
+def generate_user_job_id(telegram_id: int, length: int = 4) -> str:
+    alphabet = string.ascii_letters + string.digits
+    random_suffix = "".join(secrets.choice(alphabet) for _ in range(length))
+    return f"{telegram_id}_{random_suffix}"
+
+
+async def add_exact_job(
+    user_id: int,
+    date: str,
+    time: str,
+):
+    date_string = date + " " + time
+    run_datetime = datetime.strptime(date_string, "%d.%m.%Y %H:%M")
+    job_id = generate_user_job_id(user_id)
+    scheduler.add_job(
+        func=test_method,
+        trigger="date",
+        run_date=run_datetime,
+        kwargs={
+            "user_id": user_id,
+            "job_id": job_id,
+            "type": "exact",
+        },
+    )
+    return job_id
+
+
+async def add_timer_job(
+    user_id: int,
+    seconds: int,
+):
+    job_id = generate_user_job_id(user_id)
+    run_time = datetime.now() + timedelta(seconds=seconds)
+    scheduler.add_job(
+        func=test_method,
+        trigger="date",
+        run_date=run_time,
+        kwargs={
+            "user_id": user_id,
+            "job_id": job_id,
+            "type": "timer",
+        },
+    )
+    return job_id
+
+
+async def add_week_job(
+    user_id: int,
+    weekdays: str,
+    time: str,
+):
+    job_id = generate_user_job_id(user_id)
+    en = {
+        "1": "mon",
+        "2": "tue",
+        "3": "wed",
+        "4": "thu",
+        "5": "fri",
+        "6": "sat",
+        "7": "sun",
+    }
+    for i, j in en.items():
+        weekdays = weekdays.replace(i, j)
+    h, m = time.split(":")
+    scheduler.add_job(
+        func=test_method,
+        trigger="cron",
+        day_of_week=weekdays,
+        hour=int(h),
+        minute=int(m),
+        kwargs={
+            "user_id": user_id,
+            "job_id": job_id,
+            "type": "week",
+        },
+    )
+    return job_id
+
+
+async def add_month_job(
+    user_id: int,
+    month_day: str,
+    time: str,
+):
+    job_id = generate_user_job_id(user_id)
+    h, m = time.split(":")
+    scheduler.add_job(
+        func=test_method,
+        trigger="cron",
+        day=int(month_day) if month_day.isdigit() else month_day,
+        hour=int(h),
+        minute=int(m),
+        kwargs={
+            "user_id": user_id,
+            "job_id": job_id,
+            "type": "month",
+        },
+    )
+    return job_id
+
+
+async def add_year_job(
+    user_id: int,
+    year_month: str,
+    time: str,
+):
+    job_id = generate_user_job_id(user_id)
+    day, mon = year_month.split(".")
+    h, m = time.split(":")
+    scheduler.add_job(
+        func=test_method,
+        trigger="cron",
+        month=int(mon),
+        day=int(day),
+        hour=int(h),
+        minute=int(m),
+        kwargs={
+            "user_id": user_id,
+            "job_id": job_id,
+            "type": "year",
+        },
+    )
+    return job_id

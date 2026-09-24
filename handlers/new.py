@@ -18,6 +18,7 @@ from keyboards import (
 )
 from repositories.users import UsersRepository
 from repositories.notifications import NotificationsRepository
+from services import scheduler
 
 router = Router()
 
@@ -585,7 +586,9 @@ async def confirmation_step(
 # ========================== Confirm and Add to DB ==========================
 @router.callback_query(NewNotification.waiting_confirm, F.data == "confirm")
 async def process_confirm(
-    callback: CallbackQuery, state: FSMContext, session: AsyncSession
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
 ):
     if not await UsersRepository.get_user_by_id(callback.from_user.id, session):
         username = (
@@ -609,6 +612,30 @@ async def process_confirm(
         "month_day": data.get("month_day") if data.get("month_day") else None,
         "year_month": data.get("year_month") if data.get("year_month") else None,
     }
+    if data_dict["repeat_type"] == "exact":
+        job_id = await scheduler.add_exact_job(
+            callback.from_user.id,
+            data_dict["date"].strftime("%d.%m.%Y"),
+            data_dict["time"],
+        )
+    elif data_dict["repeat_type"] == "timer":
+        job_id = await scheduler.add_timer_job(
+            callback.from_user.id, data_dict["timer_seconds"]
+        )
+    elif data_dict["repeat_type"] == "week":
+        job_id = await scheduler.add_week_job(
+            callback.from_user.id, data_dict["weekdays"], data_dict["time"]
+        )
+    elif data_dict["repeat_type"] == "month":
+        job_id = await scheduler.add_month_job(
+            callback.from_user.id, data_dict["month_day"], data_dict["time"]
+        )
+    elif data_dict["repeat_type"] == "year":
+        job_id = await scheduler.add_year_job(
+            callback.from_user.id, data_dict["year_month"], data_dict["time"]
+        )
+    data_dict["job_id"] = job_id
+
     await NotificationsRepository.add_notification(data_dict, session)
     await state.clear()
     await callback.message.edit_text("🎉 Напоминание создано!")

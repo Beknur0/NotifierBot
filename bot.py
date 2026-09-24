@@ -16,6 +16,8 @@ from handlers import (
     new,
     edit,
 )
+from scheduler import scheduler
+from services.scheduler import init_bot
 
 
 async def main():
@@ -40,6 +42,17 @@ async def main():
         new.router,
         edit.router,
     )
+
+    init_bot(bot)
+    @dp.startup()
+    async def on_startup(bot: Bot):
+        scheduler.start()
+        print("🔗 Scheduler starts 🔗")
+
+    @dp.shutdown()
+    async def on_shutdown():
+        scheduler.shutdown()
+        print("📌 Scheduler shutdowns 📌")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
