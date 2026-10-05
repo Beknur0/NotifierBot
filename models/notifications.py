@@ -21,6 +21,7 @@ class NotificationsModel(Model):
     date: Mapped[date_type | None] = mapped_column(default=None, nullable=True)
     time: Mapped[str | None] = mapped_column(default=None, nullable=True)
     timer_seconds: Mapped[int | None] = mapped_column(default=None, nullable=True)
+    timer_str: Mapped[str | None] = mapped_column(default=None, nullable=True)
     weekdays: Mapped[str | None] = mapped_column(default=None, nullable=True)
     month_day: Mapped[str | None] = mapped_column(default=None, nullable=True)
     year_month: Mapped[str | None] = mapped_column(default=None, nullable=True)

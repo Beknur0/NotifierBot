@@ -48,6 +48,7 @@ async def add_exact_job(
             "job_id": job_id,
             "type": "exact",
         },
+        id=job_id,
     )
     return job_id
 
@@ -67,6 +68,7 @@ async def add_timer_job(
             "job_id": job_id,
             "type": "timer",
         },
+        id=job_id,
     )
     return job_id
 
@@ -100,6 +102,7 @@ async def add_week_job(
             "job_id": job_id,
             "type": "week",
         },
+        id=job_id,
     )
     return job_id
 
@@ -122,6 +125,7 @@ async def add_month_job(
             "job_id": job_id,
             "type": "month",
         },
+        id=job_id,
     )
     return job_id
 
@@ -146,5 +150,6 @@ async def add_year_job(
             "job_id": job_id,
             "type": "year",
         },
+        id=job_id,
     )
     return job_id

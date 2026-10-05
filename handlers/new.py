@@ -608,6 +608,7 @@ async def process_confirm(
         "timer_seconds": (
             data.get("timer_seconds") if data.get("timer_seconds") else None
         ),
+        "timer_str": data.get("timer_str") if data.get("timer_str") else None,
         "weekdays": data.get("weekdays") if data.get("weekdays") else None,
         "month_day": data.get("month_day") if data.get("month_day") else None,
         "year_month": data.get("year_month") if data.get("year_month") else None,
