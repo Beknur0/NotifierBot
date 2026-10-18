@@ -16,7 +16,7 @@ def get_start_keyboard():
         ],
         [
             InlineKeyboardButton(
-                text="📋 Мои напоминания", callback_data="get_all_events"
+                text="📋 Мои напоминания", callback_data="my_notifications"
             ),
         ],
         [

@@ -660,7 +660,7 @@ async def process_confirm(
 
 # ========================== Another One Logic ==========================
 @router.callback_query(StateFilter(None), F.data == "another_one")
-async def procces_another_one(callback: CallbackQuery, state: FSMContext):
+async def process_another_one(callback: CallbackQuery, state: FSMContext):
     await add_new_event(callback, state)
 
 
