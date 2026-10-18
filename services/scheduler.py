@@ -2,27 +2,8 @@ from datetime import datetime, timedelta
 import string
 import secrets
 
-from aiogram import Bot
-
-from database import new_session
 from scheduler import scheduler
-from repositories.notifications import NotificationsRepository
-
-_bot: Bot = None
-
-
-def init_bot(bot_instance):
-    global _bot
-    _bot = bot_instance
-
-
-async def test_method(user_id: int, job_id: str, type: str):
-    await _bot.send_message(
-        user_id, text=f"Тестовый запуск типа {type} с job_id: {job_id} успешен"
-    )
-    if type in ["exact", "timer"]:
-        async with new_session() as session:
-            await NotificationsRepository.delete_executed_job(job_id, session)
+from .schedules_handlers import test_method
 
 
 def generate_user_job_id(telegram_id: int, length: int = 4) -> str:

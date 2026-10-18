@@ -3,8 +3,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.events import EVENT_JOB_MISSED
 
 from config import config
+from services.schedules_handlers import listener_wrapper
 
 jobstores = {
     "default": SQLAlchemyJobStore(
@@ -25,8 +27,14 @@ job_defaults = {
     "misfire_grace_time": 59,  # допустимое опоздание в секундах
 }
 
-scheduler = AsyncIOScheduler(jobstores=jobstores)
+scheduler = AsyncIOScheduler(
+    jobstores=jobstores,
+    executors=executors,
+    job_defaults=job_defaults,
+    timezone="Asia/Yekaterinburg",
+)
 
+scheduler.add_listener(listener_wrapper, EVENT_JOB_MISSED)
 
 # Удаление задачи
 # try:

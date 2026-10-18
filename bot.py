@@ -15,9 +15,10 @@ from handlers import (
     cancel,
     new,
     edit,
+    list,
 )
 from scheduler import scheduler
-from services.scheduler import init_bot
+from services.schedules_handlers import init_bot
 
 
 async def main():
@@ -41,9 +42,11 @@ async def main():
         cancel.router,
         new.router,
         edit.router,
+        list.router,
     )
 
     init_bot(bot)
+
     @dp.startup()
     async def on_startup(bot: Bot):
         scheduler.start()
