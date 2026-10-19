@@ -36,6 +36,10 @@ class NotificationsListCallback(CallbackData, prefix="list"):
     now: int | None = None
 
 
+class PauseNotificationCallback(CallbackData, prefix="pause_notification"):
+    value: bool
+
+
 router = Router()
 
 
@@ -102,11 +106,17 @@ async def go_to_notification_page(
     await state.set_state(None)
     if not message:
         msg = await callback.message.edit_text(
-            text=text, reply_markup=list.get_notification_keyboard()
+            text=text,
+            reply_markup=list.get_notification_keyboard(
+                PauseNotificationCallback, notification.is_active
+            ),
         )
     else:
         msg = await message.answer(
-            text=text, reply_markup=list.get_notification_keyboard()
+            text=text,
+            reply_markup=list.get_notification_keyboard(
+                PauseNotificationCallback, notification.is_active
+            ),
         )
     await state.update_data(bot_msg=msg.message_id)
 
@@ -537,6 +547,30 @@ async def process_time(
         )
         await state.update_data(selected_notification=new_notification)
         await go_to_notification_page(callback, state, new_notification)
+
+
+# ========================== Processing Pause and Resume Logic ==========================
+@router.callback_query(StateFilter(None), PauseNotificationCallback.filter())
+async def process_editing(
+    callback: CallbackQuery,
+    callback_data: PauseNotificationCallback,
+    state: FSMContext,
+    session: AsyncSession,
+):
+    data = await state.get_data()
+    notification: NotificationsModel = data.get("selected_notification")
+    if callback_data.value:
+        await scheduler.pause_job(notification.job_id)
+        new_notification = await NotificationsRepository.update_notification(
+            notification.id, {"is_active": False}, session
+        )
+    else:
+        await scheduler.resume_job(notification.job_id)
+        new_notification = await NotificationsRepository.update_notification(
+            notification.id, {"is_active": True}, session
+        )
+
+    await go_to_notification_page(callback, state, new_notification)
 
 
 # ========================== Processing Back Logics ==========================

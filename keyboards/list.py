@@ -8,20 +8,18 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 if TYPE_CHECKING:
-    from handlers.list import NotificationsListCallback
+    from handlers.list import NotificationsListCallback, PauseNotificationCallback
     from models.notifications import NotificationsModel
 
 
 def get_back_keyboard():
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
-        ]
+        inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]
     )
 
 
 def get_notifications_list_keyboard(
-    callback_fabric: NotificationsListCallback,
+    callback_fabric: "NotificationsListCallback",
     notifications: list[NotificationsModel],
     count: int,
 ):
@@ -70,7 +68,9 @@ def get_notifications_list_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=btns)
 
 
-def get_notification_keyboard():
+def get_notification_keyboard(
+    callback_fabric: "PauseNotificationCallback", is_active: bool
+):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -78,7 +78,8 @@ def get_notification_keyboard():
                     text="✏️ Редактировать", callback_data="edit_notification"
                 ),
                 InlineKeyboardButton(
-                    text="⏸ Приостановить", callback_data="pause_notification"
+                    text=("⏸ Приостановить" if is_active else "▶️ Возобновить"),
+                    callback_data=callback_fabric(value=is_active).pack(),
                 ),
             ],
             [

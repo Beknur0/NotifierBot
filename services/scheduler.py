@@ -189,7 +189,20 @@ async def update_exact_job(
         processed_dict["hour"] = int(h)
         processed_dict["minute"] = int(m)
     try:
+        job = scheduler.get_job(job_id)
+        is_paused = job.next_run_time is None
         scheduler.reschedule_job(**processed_dict)
+        if is_paused:
+            scheduler.pause_job(job_id=job_id)
         return True
     except JobLookupError:
         return False
+
+
+async def pause_job(job_id: str):
+    scheduler.pause_job(job_id=job_id)
+
+
+async def resume_job(job_id: str):
+    scheduler.resume_job(job_id=job_id)
+
