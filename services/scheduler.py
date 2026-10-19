@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 import string
 import secrets
+from typing import Any
+
+from apscheduler.jobstores.base import JobLookupError
 
 from scheduler import scheduler
 from .schedules_handlers import test_method
@@ -134,3 +137,21 @@ async def add_year_job(
         id=job_id,
     )
     return job_id
+
+
+async def update_exact_job(
+    job_id: str,
+    dictionary: dict[str, Any],
+) -> bool:
+    processed_dict: dict[str, Any] = {"job_id": job_id}
+    if dictionary.get("date"):
+        date_string = dictionary.get("date") + " " + dictionary.get("time")
+        run_datetime = datetime.strptime(date_string, "%d.%m.%Y %H:%M")
+        processed_dict["trigger"] = "date"
+        processed_dict["run_date"] = run_datetime
+
+    try:
+        scheduler.reschedule_job(**processed_dict)
+        return True
+    except JobLookupError:
+        return False

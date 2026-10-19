@@ -253,7 +253,7 @@ def get_weekdays_keyboard(
                 (
                     InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")
                     if not is_editing
-                    else InlineKeyboardButton(text="◀️ Назад", callback_data="back")
+                    else InlineKeyboardButton(text="◀️ Назад", callback_data="editBack")
                 ),
             ],
         ]
