@@ -145,7 +145,9 @@ async def update_exact_job(
 ) -> bool:
     processed_dict: dict[str, Any] = {"job_id": job_id}
     if dictionary.get("date"):
-        date_string = dictionary.get("date").strftime("%d.%m.%Y") + " " + dictionary.get("time")
+        date_string = (
+            dictionary.get("date").strftime("%d.%m.%Y") + " " + dictionary.get("time")
+        )
         run_datetime = datetime.strptime(date_string, "%d.%m.%Y %H:%M")
         processed_dict["trigger"] = "date"
         processed_dict["run_date"] = run_datetime
@@ -171,7 +173,21 @@ async def update_exact_job(
         processed_dict["day_of_week"] = weekdays
         processed_dict["hour"] = int(h)
         processed_dict["minute"] = int(m)
-
+    elif dictionary.get("month_day"):
+        month_day = dictionary.get("month_day")
+        h, m = dictionary.get("time").split(":")
+        processed_dict["trigger"] = "cron"
+        processed_dict["day"] = int(month_day) if month_day.isdigit() else month_day
+        processed_dict["hour"] = int(h)
+        processed_dict["minute"] = int(m)
+    elif dictionary.get("year_month"):
+        day, mon = dictionary.get("year_month").split(".")
+        h, m = dictionary.get("time").split(":")
+        processed_dict["trigger"] = "cron"
+        processed_dict["month"] = int(mon)
+        processed_dict["day"] = int(day)
+        processed_dict["hour"] = int(h)
+        processed_dict["minute"] = int(m)
     try:
         scheduler.reschedule_job(**processed_dict)
         return True

@@ -26,6 +26,8 @@ class PagesStates(StatesGroup):
     waiting_timer = State()
     waiting_own_timer = State()
     waiting_weekdays = State()
+    waiting_month_day = State()
+    waiting_year_month = State()
 
 
 class NotificationsListCallback(CallbackData, prefix="list"):
@@ -246,29 +248,31 @@ async def process_time_editing(
             f"✏️ Текущие дни недели: {new.get_string_weekdays(notification.weekdays)} \n\n Выберите дни недели",
             reply_markup=new_kb.get_weekdays_keyboard(new.WeekdaysCallback, week_days),
         )
-    # elif notification.repeat_type == "month":
-    #     await state.set_state(new.NewNotification.waiting_month_day)
-    #     msg = await callback.message.edit_text(
-    #         f"✏️ Текущий день месяца: {notification.month_day if notification.month_day.isdigit() else "последний день месяца"} \n\n Выберите в какой день месяца напоминать?",
-    #         reply_markup=service.merge_keyboards(
-    #             new_kb.get_month_day_keyboard(new.MonthDayCallback),
-    #             list.get_back_keyboard(),
-    #         ),
-    #     )
-    # elif notification.repeat_type == "year":
-    #     await state.set_state(new.NewNotification.waiting_year_month)
-    #     msg = await callback.message.edit_text(
-    #         f"✏️ Текущая дата: {notification.year_month} \n\n Выберите в какой день и месяц напоминать?",
-    #         reply_markup=service.merge_keyboards(
-    #             new_kb.get_year_month_keyboard(
-    #                 new.YearMonthCallback,
-    #                 1,
-    #                 new.months_names[1],
-    #                 new.months_days[1],
-    #             ),
-    #             list.get_back_keyboard(),
-    #         ),
-    #     )
+    elif notification.repeat_type == "month":
+        await state.update_data(for_time="month_day")
+        await state.set_state(PagesStates.waiting_month_day)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущий день месяца: {notification.month_day if notification.month_day.isdigit() else "последний день месяца"} \n\n Выберите в какой день месяца напоминать?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_month_day_keyboard(new.MonthDayCallback),
+                list.get_back_keyboard(),
+            ),
+        )
+    elif notification.repeat_type == "year":
+        await state.update_data(for_time="year_month")
+        await state.set_state(PagesStates.waiting_year_month)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущая дата: {notification.year_month} \n\n Выберите в какой день и месяц напоминать?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_year_month_keyboard(
+                    new.YearMonthCallback,
+                    1,
+                    new.months_names[1],
+                    new.months_days[1],
+                ),
+                list.get_back_keyboard(),
+            ),
+        )
     await state.update_data(bot_msg=msg.message_id)
 
 
@@ -308,9 +312,7 @@ async def process_calendar(
         msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {chosen_date.strftime('%d.%m.%Y')} \n\n Выберите время",
             reply_markup=service.merge_keyboards(
-                new_kb.get_select_time_keyboard(
-                    new.TimeCallback, hour="00", minute="00"
-                ),
+                new_kb.get_select_time_keyboard(new.TimeCallback, hour=h, minute=m),
                 new_kb.get_cancel_keyboard(),
             ),
         )
@@ -443,6 +445,64 @@ async def process_weekdays(
             reply_markup=service.merge_keyboards(
                 new_kb.get_select_time_keyboard(new.TimeCallback, hour=h, minute=m),
                 new_kb.get_cancel_keyboard(),
+            ),
+        )
+        await state.update_data(bot_msg=msg.message_id)
+
+
+# ========================== Time Editing Month Repeat Type ==========================
+@router.callback_query(PagesStates.waiting_month_day, new.MonthDayCallback.filter())
+async def process_month_day(
+    callback: CallbackQuery, callback_data: new.MonthDayCallback, state: FSMContext
+):
+    await state.update_data(month_day=callback_data.value)
+    await state.set_state(PagesStates.waiting_time)
+    s = callback_data.value
+    if not s.isdigit():
+        s = "Последний день месяца"
+    data = await state.get_data()
+    notification: NotificationsModel = data.get("selected_notification")
+    h, m = notification.time.split(":")
+    msg = await callback.message.edit_text(
+        f"📅 Вы выбрали это число месяца: {s} \n\n Выберите время",
+        reply_markup=service.merge_keyboards(
+            new_kb.get_select_time_keyboard(new.TimeCallback, hour=h, minute=m),
+            new_kb.get_cancel_keyboard(),
+        ),
+    )
+    await state.update_data(bot_msg=msg.message_id)
+
+
+# ========================== Time Editing Year Repeat Type ==========================
+@router.callback_query(PagesStates.waiting_year_month, new.YearMonthCallback.filter())
+async def process_year_month(
+    callback: CallbackQuery, callback_data: new.YearMonthCallback, state: FSMContext
+):
+    if callback_data.action == "change":
+        new_id = ((callback_data.now + callback_data.value - 1) % 12) + 1
+        await callback.message.edit_reply_markup(
+            reply_markup=service.merge_keyboards(
+                new_kb.get_year_month_keyboard(
+                    callback_fabric=new.YearMonthCallback,
+                    id=new_id,
+                    month=new.months_names[new_id],
+                    days=new.months_days[new_id],
+                ),
+                list.get_back_keyboard(),
+            )
+        )
+    else:
+        s = f"{str(callback_data.value).zfill(2)}.{str(callback_data.now).zfill(2)}"
+        await state.update_data(year_month=s)
+        await state.set_state(PagesStates.waiting_time)
+        data = await state.get_data()
+        notification: NotificationsModel = data.get("selected_notification")
+        h, m = notification.time.split(":")
+        msg = await callback.message.edit_text(
+            f"📅 Вы выбрали дату: {s} \n\n Выберите время",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_select_time_keyboard(new.TimeCallback, hour=h, minute=m),
+                list.get_back_keyboard(),
             ),
         )
         await state.update_data(bot_msg=msg.message_id)
