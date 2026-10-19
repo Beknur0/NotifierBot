@@ -145,7 +145,7 @@ async def update_exact_job(
 ) -> bool:
     processed_dict: dict[str, Any] = {"job_id": job_id}
     if dictionary.get("date"):
-        date_string = dictionary.get("date") + " " + dictionary.get("time")
+        date_string = dictionary.get("date").strftime("%d.%m.%Y") + " " + dictionary.get("time")
         run_datetime = datetime.strptime(date_string, "%d.%m.%Y %H:%M")
         processed_dict["trigger"] = "date"
         processed_dict["run_date"] = run_datetime
@@ -153,6 +153,24 @@ async def update_exact_job(
         run_time = datetime.now() + timedelta(seconds=dictionary.get("timer_seconds"))
         processed_dict["trigger"] = "date"
         processed_dict["run_date"] = run_time
+    elif dictionary.get("weekdays"):
+        en = {
+            "1": "mon",
+            "2": "tue",
+            "3": "wed",
+            "4": "thu",
+            "5": "fri",
+            "6": "sat",
+            "7": "sun",
+        }
+        weekdays: str = dictionary.get("weekdays")
+        for i, j in en.items():
+            weekdays = weekdays.replace(i, j)
+        h, m = dictionary.get("time").split(":")
+        processed_dict["trigger"] = "cron"
+        processed_dict["day_of_week"] = weekdays
+        processed_dict["hour"] = int(h)
+        processed_dict["minute"] = int(m)
 
     try:
         scheduler.reschedule_job(**processed_dict)

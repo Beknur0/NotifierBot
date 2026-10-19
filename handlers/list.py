@@ -25,6 +25,7 @@ class PagesStates(StatesGroup):
     waiting_time = State()
     waiting_timer = State()
     waiting_own_timer = State()
+    waiting_weekdays = State()
 
 
 class NotificationsListCallback(CallbackData, prefix="list"):
@@ -226,23 +227,25 @@ async def process_time_editing(
                 list.get_back_keyboard(),
             ),
         )
-    # elif notification.repeat_type == "week":
-    #     await state.set_state(new.NewNotification.waiting_weekdays)
-    #     week_days = {
-    #         1: False,
-    #         2: False,
-    #         3: False,
-    #         4: False,
-    #         5: False,
-    #         6: False,
-    #         7: False,
-    #     }
-    #     for day in notification.weekdays.split(", "):
-    #         week_days[int(day)] == True
-    #     msg = await callback.message.edit_text(
-    #         f"✏️ Текущие дни недели: {new.get_string_weekdays(notification.weekdays)} \n\n Выберите дни недели",
-    #         reply_markup=new_kb.get_weekdays_keyboard(new.WeekdaysCallback, week_days),
-    #     )
+    elif notification.repeat_type == "week":
+        await state.update_data(for_time="weekdays")
+        await state.set_state(PagesStates.waiting_weekdays)
+        week_days = {
+            1: False,
+            2: False,
+            3: False,
+            4: False,
+            5: False,
+            6: False,
+            7: False,
+        }
+        await state.update_data(week_days=week_days)
+        for day in notification.weekdays.split(", "):
+            week_days[int(day)] = True
+        msg = await callback.message.edit_text(
+            f"✏️ Текущие дни недели: {new.get_string_weekdays(notification.weekdays)} \n\n Выберите дни недели",
+            reply_markup=new_kb.get_weekdays_keyboard(new.WeekdaysCallback, week_days),
+        )
     # elif notification.repeat_type == "month":
     #     await state.set_state(new.NewNotification.waiting_month_day)
     #     msg = await callback.message.edit_text(
@@ -299,6 +302,9 @@ async def process_calendar(
 
         await state.update_data(date=chosen_date)
         await state.set_state(PagesStates.waiting_time)
+        data = await state.get_data()
+        notification: NotificationsModel = data.get("selected_notification")
+        h, m = notification.time.split(":")
         msg = await callback.message.edit_text(
             f"📅 Вы выбрали дату: {chosen_date.strftime('%d.%m.%Y')} \n\n Выберите время",
             reply_markup=service.merge_keyboards(
@@ -393,6 +399,55 @@ async def process_own_timer(
         pass
 
 
+# ========================== Time Editing Week Repeat Type ==========================
+@router.callback_query(PagesStates.waiting_weekdays, new.WeekdaysCallback.filter())
+async def process_weekdays(
+    callback: CallbackQuery, callback_data: new.WeekdaysCallback, state: FSMContext
+):
+    data = await state.get_data()
+    week_days = data.get("week_days")
+    if callback_data.action == "switch":
+        week_days[callback_data.day] = not week_days[callback_data.day]
+        await new.update_weekdays_keyboard(callback, state, week_days)
+    elif callback_data.action == "remove_all":
+        flag = False
+        for i, j in week_days.items():
+            if j:
+                flag = True
+            week_days[i] = False
+        if flag:
+            await new.update_weekdays_keyboard(callback, state, week_days)
+    elif callback_data.action == "select_all":
+        flag = False
+        for i, j in week_days.items():
+            if not j:
+                flag = True
+            week_days[i] = True
+        if flag:
+            await new.update_weekdays_keyboard(callback, state, week_days)
+    elif callback_data.action == "finish":
+        text = ""
+        for i, j in week_days.items():
+            if j:
+                text += f"{i}, "
+        text = text[:-2]
+        if not text:
+            await callback.answer("Нужно выбрать хотя бы один день недели")
+            return
+        notification: NotificationsModel = data.get("selected_notification")
+        h, m = notification.time.split(":")
+        await state.update_data(weekdays=text)
+        await state.set_state(PagesStates.waiting_time)
+        msg = await callback.message.edit_text(
+            f"📅 Вы выбрали эти дни недели: {new.get_string_weekdays(text)} \n\n Выберите время",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_select_time_keyboard(new.TimeCallback, hour=h, minute=m),
+                new_kb.get_cancel_keyboard(),
+            ),
+        )
+        await state.update_data(bot_msg=msg.message_id)
+
+
 # ========================== Time Editing For Different Repeat Types ==========================
 @router.callback_query(PagesStates.waiting_time, new.TimeCallback.filter())
 async def process_time(
@@ -408,7 +463,7 @@ async def process_time(
         notification: NotificationsModel = data.get("selected_notification")
         col = data.get("for_time")
         dictionary = {
-            col: data.get(col).strftime("%d.%m.%Y"),
+            col: data.get(col),
             "time": f"{callback_data.hour}:{callback_data.minute}",
         }
         await scheduler.update_exact_job(notification.job_id, dictionary)
