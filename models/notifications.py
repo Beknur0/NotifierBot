@@ -15,8 +15,8 @@ class NotificationsModel(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
-    title: Mapped[str] = mapped_column(nullable=False)
     job_id: Mapped[str] = mapped_column(nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(nullable=False)
     repeat_type: Mapped[str] = mapped_column(nullable=False)
     date: Mapped[date_type | None] = mapped_column(default=None, nullable=True)
     time: Mapped[str | None] = mapped_column(default=None, nullable=True)
