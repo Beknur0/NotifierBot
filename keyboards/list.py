@@ -5,7 +5,6 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 if TYPE_CHECKING:
     from handlers.list import NotificationsListCallback, PauseNotificationCallback
@@ -60,7 +59,7 @@ def get_notifications_list_keyboard(
         InlineKeyboardButton(
             text="➕ Создать напоминание", callback_data="add_new_event"
         ),
-        InlineKeyboardButton(text="🏠 Меню", callback_data="cancel"),
+        InlineKeyboardButton(text="🏠 Меню", callback_data="go_home"),
     ]
     if count != 0:
         btns.append(nav)
@@ -108,5 +107,29 @@ def get_editing_fields_keyboard(title: str, time: str):
             [
                 InlineKeyboardButton(text="◀️ Назад", callback_data="back"),
             ],
+        ]
+    )
+
+
+def get_delete_confirmation_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Да, удалить", callback_data="confirm_deleting"
+                ),
+                InlineKeyboardButton(text="◀️ Отмена", callback_data="back"),
+            ]
+        ]
+    )
+
+
+def get_after_deleting_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📋 Мои напоминания", callback_data="back"),
+                InlineKeyboardButton(text="🏠 Меню ", callback_data="go_home"),
+            ]
         ]
     )

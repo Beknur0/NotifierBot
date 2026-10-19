@@ -206,3 +206,6 @@ async def pause_job(job_id: str):
 async def resume_job(job_id: str):
     scheduler.resume_job(job_id=job_id)
 
+
+async def delete_job(job_id: str):
+    scheduler.remove_job(job_id=job_id)

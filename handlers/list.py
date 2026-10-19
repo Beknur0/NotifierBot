@@ -30,6 +30,10 @@ class PagesStates(StatesGroup):
     waiting_year_month = State()
 
 
+class DeletingStates(StatesGroup):
+    waiting_delete_confirmation = State()
+
+
 class NotificationsListCallback(CallbackData, prefix="list"):
     action: str
     value: int
@@ -551,7 +555,7 @@ async def process_time(
 
 # ========================== Processing Pause and Resume Logic ==========================
 @router.callback_query(StateFilter(None), PauseNotificationCallback.filter())
-async def process_editing(
+async def process_pause_and_resume(
     callback: CallbackQuery,
     callback_data: PauseNotificationCallback,
     state: FSMContext,
@@ -573,8 +577,48 @@ async def process_editing(
     await go_to_notification_page(callback, state, new_notification)
 
 
+# ========================== Processing Delete Notification Logic ==========================
+@router.callback_query(StateFilter(None), F.data == "delete_notification")
+async def process_deleting(
+    callback: CallbackQuery,
+    state: FSMContext,
+):
+    data = await state.get_data()
+    notification: NotificationsModel = data.get("selected_notification")
+    await state.set_state(DeletingStates.waiting_delete_confirmation)
+    msg = await callback.message.edit_text(
+        f"⚠️ Удалить напоминание? \n\n {notification.title} \n\n Это действие нельзя отменить.",
+        reply_markup=list.get_delete_confirmation_keyboard(),
+    )
+    await state.update_data(bot_msg=msg.message_id)
+
+
+@router.callback_query(
+    DeletingStates.waiting_delete_confirmation, F.data == "confirm_deleting"
+)
+async def process_deleting_confirmation(
+    callback: CallbackQuery,
+    state: FSMContext,
+):
+    data = await state.get_data()
+    notification: NotificationsModel = data.get("selected_notification")
+    await state.set_state(None)
+    await scheduler.delete_job(notification.job_id)
+    msg = await callback.message.edit_text(
+        "🗑 Напоминание удалено.",
+        reply_markup=list.get_after_deleting_keyboard(),
+    )
+    await state.update_data(bot_msg=msg.message_id)
+
+
 # ========================== Processing Back Logics ==========================
-@router.callback_query(PagesStates.waiting_editing_field, F.data == "back")
+@router.callback_query(
+    StateFilter(
+        PagesStates.waiting_editing_field,
+        DeletingStates.waiting_delete_confirmation,
+    ),
+    F.data == "back",
+)
 async def process_back_logic(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     notification = data.get("selected_notification")
@@ -591,3 +635,12 @@ async def process_back_logic3(
 @router.callback_query(StateFilter("*"), F.data == "back")
 async def process_back_logic2(callback: CallbackQuery, state: FSMContext):
     await process_editing(callback, state)
+
+
+@router.callback_query(F.data == "go_home")
+async def process_back_logic3(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text(
+        f"👋 Привет, {callback.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выберите действие:",
+        reply_markup=start.get_start_keyboard(),
+    )
