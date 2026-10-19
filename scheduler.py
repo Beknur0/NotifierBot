@@ -3,7 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.executors.pool import ThreadPoolExecutor
-from apscheduler.events import EVENT_JOB_MISSED
+from apscheduler.events import EVENT_JOB_REMOVED
 
 from config import config
 from services.schedules_handlers import listener_wrapper
@@ -34,7 +34,7 @@ scheduler = AsyncIOScheduler(
     timezone="Asia/Yekaterinburg",
 )
 
-scheduler.add_listener(listener_wrapper, EVENT_JOB_MISSED)
+scheduler.add_listener(listener_wrapper, EVENT_JOB_REMOVED)
 
 # Удаление задачи
 # try:
