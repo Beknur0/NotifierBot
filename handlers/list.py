@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from aiogram import F, Bot, Router
 from aiogram.filters import StateFilter
@@ -132,7 +132,7 @@ def get_prettified_print(notification: NotificationsModel, typ: str, vremiya: st
 
 {"⏱ Повторение:":<18} {typ}
 {"🕘 Время:":<25} {vremiya}
-{"📅 Создано:":<23} {notification.created_at.strftime("%H:%M %d.%m.%Y")}
+{"📅 Создано:":<23} {(notification.created_at + timedelta(hours=5)).strftime("%H:%M %d.%m.%Y")}
 {"📊 Статус:":<25} {"🟢 Активно" if notification.is_active else "🔴 Не активно"}
 """
 
