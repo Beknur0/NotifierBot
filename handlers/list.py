@@ -23,6 +23,8 @@ class PagesStates(StatesGroup):
     waiting_title_editing = State()
     waiting_date = State()
     waiting_time = State()
+    waiting_timer = State()
+    waiting_own_timer = State()
 
 
 class NotificationsListCallback(CallbackData, prefix="list"):
@@ -84,7 +86,10 @@ async def process_list(
 
 
 async def go_to_notification_page(
-    callback: CallbackQuery, state: FSMContext, notification: NotificationsModel
+    callback: CallbackQuery | None,
+    state: FSMContext,
+    notification: NotificationsModel,
+    message: Message | None = None,
 ):
     typ, vremiya = get_typ_vremiya(data=notification)
     text = get_prettified_print(notification, typ, vremiya)
@@ -92,9 +97,14 @@ async def go_to_notification_page(
         selected_notification=notification, typ=typ, vremiya=vremiya
     )
     await state.set_state(None)
-    msg = await callback.message.edit_text(
-        text=text, reply_markup=list.get_notification_keyboard()
-    )
+    if not message:
+        msg = await callback.message.edit_text(
+            text=text, reply_markup=list.get_notification_keyboard()
+        )
+    else:
+        msg = await message.answer(
+            text=text, reply_markup=list.get_notification_keyboard()
+        )
     await state.update_data(bot_msg=msg.message_id)
 
 
@@ -176,15 +186,10 @@ async def edit_new_title_process(
     data = await state.get_data()
     notification: NotificationsModel = data.get("selected_notification")
     bot_msg = data.get("bot_msg")
-    notification.title = message.text
     new_notification = await NotificationsRepository.update_notification(
         id=notification.id, dictionary={"title": message.text}, session=session
     )
-    await state.update_data(selected_notification=new_notification)
-    typ, vremiya = get_typ_vremiya(data=new_notification)
-    text = get_prettified_print(new_notification, typ, vremiya)
-    await state.set_state(None)
-    msg = await message.answer(text, reply_markup=list.get_notification_keyboard())
+    await go_to_notification_page(None, state, new_notification, message)
 
     try:
         await message.delete()
@@ -195,7 +200,6 @@ async def edit_new_title_process(
             await bot.delete_message(chat_id=message.chat.id, message_id=bot_msg)
         except Exception:
             pass
-    await state.update_data(bot_msg=msg.message_id)
 
 
 # ========================== Time Editing Process ==========================
@@ -212,15 +216,16 @@ async def process_time_editing(
             f"✏️ Текущая дата: {notification.date.strftime('%d.%m.%Y')} \n\n Выберите дату",
             reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
         )
-    # elif notification.repeat_type == "timer":
-    #     await state.set_state(new.NewNotification.waiting_timer)
-    #     msg = await callback.message.edit_text(
-    #         f"✏️ Текущее время напоминания: {notification.timer_str} \n\n Через сколько времени напомнить?",
-    #         reply_markup=service.merge_keyboards(
-    #             new_kb.get_timer_keyboard(new.TimerCallback),
-    #             list.get_back_keyboard(),
-    #         ),
-    #     )
+    elif notification.repeat_type == "timer":
+        await state.update_data(for_time="timer_seconds")
+        await state.set_state(PagesStates.waiting_timer)
+        msg = await callback.message.edit_text(
+            f"✏️ Текущее время напоминания: {notification.timer_str} \n\n Через сколько времени напомнить?",
+            reply_markup=service.merge_keyboards(
+                new_kb.get_timer_keyboard(new.TimerCallback),
+                list.get_back_keyboard(),
+            ),
+        )
     # elif notification.repeat_type == "week":
     #     await state.set_state(new.NewNotification.waiting_weekdays)
     #     week_days = {
@@ -306,6 +311,89 @@ async def process_calendar(
         await state.update_data(bot_msg=msg.message_id)
 
 
+# ========================== Time Editing Timer Repeat Type ==========================
+@router.callback_query(PagesStates.waiting_timer, new.TimerCallback.filter())
+async def process_timer(
+    callback: CallbackQuery,
+    callback_data: new.TimerCallback,
+    state: FSMContext,
+    session: AsyncSession,
+):
+    if callback_data.value != "own":
+        data = await state.get_data()
+        notification: NotificationsModel = data.get("selected_notification")
+        col = data.get("for_time")
+        dictionary = {
+            col: new.to_seconds(callback_data.value),
+        }
+        await scheduler.update_exact_job(notification.job_id, dictionary)
+        new_notification = await NotificationsRepository.update_notification(
+            id=notification.id,
+            dictionary={
+                col: new.to_seconds(callback_data.value),
+                "timer_str": callback_data.value,
+            },
+            session=session,
+        )
+        await state.update_data(selected_notification=new_notification)
+        await go_to_notification_page(callback, state, new_notification)
+
+    else:
+        await state.set_state(PagesStates.waiting_own_timer)
+        msg = await callback.message.edit_text(
+            text=("""Введи время в формате:
+"X год, Y месяц, Z неделя, N день, M час, K мин, V сек"
+Например: 2 неделя, 1 час, 5 мин, 45 сек"""),
+            reply_markup=new_kb.get_cancel_keyboard(),
+        )
+        await state.update_data(bot_msg=msg.message_id)
+
+
+@router.message(PagesStates.waiting_own_timer)
+async def process_own_timer(
+    message: Message,
+    state: FSMContext,
+    bot: Bot,
+    session: AsyncSession,
+):
+    if new.validate_time_format(message.text):
+        sec = new.to_seconds(message.text)
+        if sec != 0:
+            await state.update_data(timer_seconds=sec)
+            await state.update_data(timer_str=message.text)
+            data = await state.get_data()
+            bot_msg = data.get("bot_msg")
+            notification: NotificationsModel = data.get("selected_notification")
+            col = data.get("for_time")
+            dictionary = {
+                col: sec,
+            }
+            await scheduler.update_exact_job(notification.job_id, dictionary)
+            new_notification = await NotificationsRepository.update_notification(
+                id=notification.id,
+                dictionary={
+                    col: sec,
+                    "timer_str": message.text,
+                },
+                session=session,
+            )
+            await state.update_data(selected_notification=new_notification)
+            await go_to_notification_page(None, state, new_notification, message)
+
+            if bot_msg:
+                try:
+                    await bot.delete_message(
+                        chat_id=message.chat.id, message_id=bot_msg
+                    )
+                except Exception:
+                    pass
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+
+# ========================== Time Editing For Different Repeat Types ==========================
 @router.callback_query(PagesStates.waiting_time, new.TimeCallback.filter())
 async def process_time(
     callback: CallbackQuery,
@@ -319,7 +407,10 @@ async def process_time(
         data = await state.get_data()
         notification: NotificationsModel = data.get("selected_notification")
         col = data.get("for_time")
-        dictionary = {col: data.get(col).strftime("%d.%m.%Y"), "time": f"{callback_data.hour}:{callback_data.minute}"}
+        dictionary = {
+            col: data.get(col).strftime("%d.%m.%Y"),
+            "time": f"{callback_data.hour}:{callback_data.minute}",
+        }
         await scheduler.update_exact_job(notification.job_id, dictionary)
         new_notification = await NotificationsRepository.update_notification(
             id=notification.id,
