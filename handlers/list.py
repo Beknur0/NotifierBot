@@ -548,12 +548,10 @@ async def process_back_logic(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(StateFilter(None), F.data == "back")
-async def process_back_logic3(callback: CallbackQuery, state: FSMContext):
-    await state.clear()
-    await callback.message.edit_text(
-        f"👋 Привет, {callback.from_user.full_name}! \n Я твой личный помощник для напоминаний. \n\n Выберите действие:",
-        reply_markup=start.get_start_keyboard(),
-    )
+async def process_back_logic3(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession
+):
+    await process_my_list(callback, state, session)
 
 
 @router.callback_query(StateFilter("*"), F.data == "back")
