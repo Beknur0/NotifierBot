@@ -126,7 +126,7 @@ async def process_exact_type(
     await state.update_data(bot_msg=msg.message_id)
 
 
-@router.callback_query(SimpleCalendarCallback.filter())
+@router.callback_query(NewNotification.waiting_date, SimpleCalendarCallback.filter())
 async def process_calendar(
     callback: CallbackQuery,
     callback_data: SimpleCalendarCallback,
@@ -497,8 +497,6 @@ async def process_time(
 async def update_time(
     callback: CallbackQuery, callback_data: TimeCallback, state: FSMContext
 ):
-    data = await state.get_data()
-
     hour = callback_data.hour
     minute = callback_data.minute
 
@@ -507,19 +505,7 @@ async def update_time(
     elif callback_data.unit == "minute":
         minute = str((int(minute) + callback_data.value) % 60).zfill(2)
 
-    if data["repeat_type"] == "exact":
-        vremiya = f"📅 Вы выбрали дату: {data["date"].strftime('%d.%m.%Y')}"
-    elif data["repeat_type"] == "week":
-        vremiya = (
-            f"📅 Вы выбрали эти дни недели: {get_string_weekdays(data["weekdays"])}"
-        )
-    elif data["repeat_type"] == "month":
-        vremiya = f"📅 Вы выбрали это число месяца: {data["month_day"] if data["month_day"].isdigit() else "Последний день месяца"}"
-    elif data["repeat_type"] == "year":
-        vremiya = f"📅 Вы выбрали дату: {data["year_month"]}"
-
-    msg = await callback.message.edit_text(
-        f"{vremiya} \n\n 🕒 Шаг 3.2 из 4 \n\n Выберите время",
+    msg = await callback.message.edit_reply_markup(
         reply_markup=service.merge_keyboards(
             new.get_select_time_keyboard(TimeCallback, hour=hour, minute=minute),
             new.get_cancel_keyboard(),
