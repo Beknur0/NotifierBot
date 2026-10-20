@@ -6,7 +6,7 @@ from typing import Any
 from apscheduler.jobstores.base import JobLookupError
 
 from scheduler import scheduler
-from .schedules_handlers import test_method
+from .schedules_handlers import notifying_user
 
 
 def generate_user_job_id(telegram_id: int, length: int = 4) -> str:
@@ -24,7 +24,7 @@ async def add_exact_job(
     run_datetime = datetime.strptime(date_string, "%d.%m.%Y %H:%M")
     job_id = generate_user_job_id(user_id)
     scheduler.add_job(
-        func=test_method,
+        func=notifying_user,
         trigger="date",
         run_date=run_datetime,
         kwargs={
@@ -44,7 +44,7 @@ async def add_timer_job(
     job_id = generate_user_job_id(user_id)
     run_time = datetime.now() + timedelta(seconds=seconds)
     scheduler.add_job(
-        func=test_method,
+        func=notifying_user,
         trigger="date",
         run_date=run_time,
         kwargs={
@@ -76,7 +76,7 @@ async def add_week_job(
         weekdays = weekdays.replace(i, j)
     h, m = time.split(":")
     scheduler.add_job(
-        func=test_method,
+        func=notifying_user,
         trigger="cron",
         day_of_week=weekdays,
         hour=int(h),
@@ -99,7 +99,7 @@ async def add_month_job(
     job_id = generate_user_job_id(user_id)
     h, m = time.split(":")
     scheduler.add_job(
-        func=test_method,
+        func=notifying_user,
         trigger="cron",
         day=int(month_day) if month_day.isdigit() else month_day,
         hour=int(h),
@@ -123,7 +123,7 @@ async def add_year_job(
     day, mon = year_month.split(".")
     h, m = time.split(":")
     scheduler.add_job(
-        func=test_method,
+        func=notifying_user,
         trigger="cron",
         month=int(mon),
         day=int(day),
