@@ -35,7 +35,7 @@ def get_notifications_list_keyboard(
     btns = [
         [
             InlineKeyboardButton(
-                text=f"{notification.title}",
+                text=f"{"🟢" if notification.is_active else "🔴"} {notification.title}",
                 callback_data=callback_fabric(
                     action="select", value=notification.id
                 ).pack(),
