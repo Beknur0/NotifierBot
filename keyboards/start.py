@@ -19,9 +19,9 @@ def get_start_keyboard():
                 text="📋 Мои напоминания", callback_data="my_notifications"
             ),
         ],
-        [
-            InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings"),
-        ],
+        # [
+        #     InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings"),
+        # ],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     return keyboard
