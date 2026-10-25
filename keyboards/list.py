@@ -19,7 +19,7 @@ def get_back_keyboard():
 
 def get_notifications_list_keyboard(
     callback_fabric: "NotificationsListCallback",
-    notifications: list[NotificationsModel],
+    notifications: list["NotificationsModel"],
     count: int,
 ):
     all_page = (len(notifications) // 5) + (1 if len(notifications) % 5 != 0 else 0)
