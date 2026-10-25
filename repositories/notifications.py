@@ -7,10 +7,10 @@ from models.notifications import NotificationsModel
 class NotificationsRepository:
     @classmethod
     async def add_notification(cls, data: dict, session: AsyncSession):
-        new_user = NotificationsModel(**data)
-        session.add(new_user)
+        notification = NotificationsModel(**data)
+        session.add(notification)
         await session.commit()
-        await session.refresh(new_user)
+        await notification
 
     @classmethod
     async def delete_by_job_id(cls, job_id: str, session: AsyncSession):
