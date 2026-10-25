@@ -231,7 +231,7 @@ async def process_time_editing(
         await state.set_state(PagesStates.waiting_date)
         msg = await callback.message.edit_text(
             f"✏️ Текущая дата: {notification.date.strftime('%d.%m.%Y')} \n\n Выберите дату",
-            reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+            reply_markup=await SimpleCalendar(locale="C").start_calendar(),
         )
     elif notification.repeat_type == "timer":
         await state.update_data(for_time="timer_seconds")
@@ -301,7 +301,7 @@ async def process_calendar(
         await process_back_logic2(callback, state)
         return
 
-    calendar = SimpleCalendar(locale="ru")
+    calendar = SimpleCalendar(locale="C")
     selected, chosen_date = await calendar.process_selection(callback, callback_data)
     if selected:
         if isinstance(chosen_date, datetime):
@@ -313,7 +313,7 @@ async def process_calendar(
             )
             msg = await callback.message.edit_text(
                 f"✏️ Выберите дату",
-                reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+                reply_markup=await SimpleCalendar(locale="C").start_calendar(),
             )
             await state.update_data(bot_msg=msg.message_id)
             return

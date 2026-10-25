@@ -94,7 +94,7 @@ async def edit_time_process(callback: CallbackQuery, state: FSMContext):
         await state.set_state(new_hand.NewNotification.waiting_date)
         msg = await callback.message.edit_text(
             f"✏️ Текущая дата: {data["date"].strftime('%d.%m.%Y')} \n\n Выберите дату",
-            reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+            reply_markup=await SimpleCalendar(locale="C").start_calendar(),
         )
     elif data["repeat_type"] == "timer":
         await state.set_state(new_hand.NewNotification.waiting_timer)

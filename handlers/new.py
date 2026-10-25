@@ -121,7 +121,7 @@ async def process_exact_type(
     await state.set_state(NewNotification.waiting_date)
     msg = await callback.message.edit_text(
         "📅 Шаг 3.1 из 4 \n\n Выберите дату",
-        reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+        reply_markup=await SimpleCalendar(locale="C").start_calendar(),
     )
     await state.update_data(bot_msg=msg.message_id)
 
@@ -136,7 +136,7 @@ async def process_calendar(
         await back_to(callback, state)
         return
 
-    calendar = SimpleCalendar(locale="ru")
+    calendar = SimpleCalendar(locale="C")
     selected, chosen_date = await calendar.process_selection(callback, callback_data)
     if selected:
         if isinstance(chosen_date, datetime):
@@ -148,7 +148,7 @@ async def process_calendar(
             )
             msg = await callback.message.edit_text(
                 "📅 Шаг 3.1 из 4 \n\n Выберите дату",
-                reply_markup=await SimpleCalendar(locale="ru").start_calendar(),
+                reply_markup=await SimpleCalendar(locale="C").start_calendar(),
             )
             await state.update_data(bot_msg=msg.message_id)
             return
