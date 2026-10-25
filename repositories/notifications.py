@@ -10,7 +10,7 @@ class NotificationsRepository:
         notification = NotificationsModel(**data)
         session.add(notification)
         await session.commit()
-        await notification
+        return notification
 
     @classmethod
     async def delete_by_job_id(cls, job_id: str, session: AsyncSession):
