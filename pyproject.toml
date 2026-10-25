@@ -1,7 +1,7 @@
 [project]
 name = "notifierbot"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "aiogram>=3.31.0",
     "aiogram-calendar>=0.6.0",
