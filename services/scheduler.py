@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import string
 import secrets
 from typing import Any
@@ -42,7 +42,7 @@ async def add_timer_job(
     seconds: int,
 ):
     job_id = generate_user_job_id(user_id)
-    run_time = datetime.now() + timedelta(seconds=seconds)
+    run_time = datetime.now(timezone.utc) + timedelta(seconds=seconds)
     scheduler.add_job(
         func=notifying_user,
         trigger="date",
