@@ -28,7 +28,7 @@ def get_cancel_keyboard():  # callback: BackCallback):
     )
 
 
-def get_repeat_type_keyboard(callback_fabric: RepeatTypeCallback):
+def get_repeat_type_keyboard(callback_fabric: "RepeatTypeCallback"):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -66,7 +66,7 @@ def get_repeat_type_keyboard(callback_fabric: RepeatTypeCallback):
 
 
 def get_select_time_keyboard(
-    callback_fabric: TimeCallback,
+    callback_fabric: "TimeCallback",
     hour: str,
     minute: str,
 ):
@@ -158,7 +158,7 @@ def get_select_time_keyboard(
     )
 
 
-def get_timer_keyboard(callback_fabric: TimerCallback):
+def get_timer_keyboard(callback_fabric: "TimerCallback"):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -199,7 +199,7 @@ def get_timer_keyboard(callback_fabric: TimerCallback):
 
 
 def get_weekdays_keyboard(
-    callback_fabric: WeekdaysCallback, days: dict[int, bool], is_editing: bool = False
+    callback_fabric: "WeekdaysCallback", days: dict[int, bool], is_editing: bool = False
 ):
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -260,7 +260,7 @@ def get_weekdays_keyboard(
     )
 
 
-def get_month_day_keyboard(callback_fabric: MonthDayCallback):
+def get_month_day_keyboard(callback_fabric: "MonthDayCallback"):
     btns = (
         np.array(
             [
@@ -285,7 +285,7 @@ def get_month_day_keyboard(callback_fabric: MonthDayCallback):
 
 
 def get_year_month_keyboard(
-    callback_fabric: YearMonthCallback, id: int, month: str, days: int
+    callback_fabric: "YearMonthCallback", id: int, month: str, days: int
 ):
     month_btns = [
         [
