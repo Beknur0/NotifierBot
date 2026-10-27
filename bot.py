@@ -19,6 +19,7 @@ from handlers import (
 )
 from scheduler import scheduler
 from services.schedules_handlers import init_bot
+from services.bot_commands import get_commands
 
 
 async def main():
@@ -44,6 +45,7 @@ async def main():
         edit.router,
         list.router,
     )
+    await bot.set_my_commands(get_commands())
 
     init_bot(bot)
 
