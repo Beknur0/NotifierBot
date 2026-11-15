@@ -152,7 +152,7 @@ async def update_exact_job(
         processed_dict["trigger"] = "date"
         processed_dict["run_date"] = run_datetime
     elif dictionary.get("timer_seconds"):
-        run_time = datetime.now() + timedelta(seconds=dictionary.get("timer_seconds"))
+        run_time = datetime.now(timezone.utc) + timedelta(seconds=dictionary.get("timer_seconds"))
         processed_dict["trigger"] = "date"
         processed_dict["run_date"] = run_time
     elif dictionary.get("weekdays"):
