@@ -400,7 +400,12 @@ async def process_own_timer(
                 session=session,
             )
             await state.update_data(selected_notification=new_notification)
-            await go_to_notification_page(None, state, new_notification, message)
+            await go_to_notification_page(
+                callback=None,
+                state=state,
+                notification=new_notification,
+                message=message,
+            )
 
             if bot_msg:
                 try:
