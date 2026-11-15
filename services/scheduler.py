@@ -209,3 +209,7 @@ async def resume_job(job_id: str):
 
 async def delete_job(job_id: str):
     scheduler.remove_job(job_id=job_id)
+
+def get_next_run_time(job_id: str) -> datetime | None:
+    job = scheduler.get_job(job_id)
+    return job.next_run_time

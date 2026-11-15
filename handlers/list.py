@@ -127,11 +127,12 @@ async def go_to_notification_page(
 
 # ========================== Output Generating Functions ==========================
 def get_prettified_print(notification: NotificationsModel, typ: str, vremiya: str):
+    next_run = scheduler.get_next_run_time(notification.job_id)
     return f"""
 📌 {notification.title}
 
 {"⏱ Повторение:":<18} {typ}
-{"🕘 Время:":<25} {vremiya}
+{"🕘 Время:":<25} {vremiya} {(f"\n⌛ След. уведомление: {(next_run + timedelta(hours=5)).strftime("%H:%M %d.%m.%Y") if next_run else "Уведомление не активно"}") if notification.repeat_type == "timer" else ""}
 {"📅 Создано:":<23} {(notification.created_at + timedelta(hours=5)).strftime("%H:%M %d.%m.%Y")}
 {"📊 Статус:":<25} {"🟢 Активно" if notification.is_active else "🔴 Не активно"}
 """
